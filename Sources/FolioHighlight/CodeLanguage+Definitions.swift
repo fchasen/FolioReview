@@ -10,6 +10,7 @@ import TreeSitterJSON
 import TreeSitterHTML
 import TreeSitterCSS
 import TreeSitterSwift
+import TreeSitterBash
 import TreeSitterMarkdown
 
 public extension CodeLanguage {
@@ -134,5 +135,15 @@ public extension CodeLanguage {
         bundle: .module,
         queryResource: "markdown-highlights",
         language: Language(language: tree_sitter_markdown())
+    )
+
+    static let bash = CodeLanguage(
+        id: "bash",
+        displayName: "Bash",
+        extensions: ["sh", "bash", "zsh"],
+        lineComment: "#",
+        bundle: .module,
+        queryResource: "bash-highlights",
+        language: Language(language: tree_sitter_bash())
     )
 }

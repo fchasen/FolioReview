@@ -150,6 +150,19 @@ let package = Package(
             cSettings: [.headerSearchPath("src")]
         ),
         .target(
+            name: "TreeSitterBash",
+            path: "Vendor/tree-sitter-bash",
+            exclude: [
+                "src/grammar.json",
+                "src/node-types.json",
+                "queries",
+                "LICENSE"
+            ],
+            sources: ["src/parser.c", "src/scanner.c"],
+            publicHeadersPath: "bindings/swift/TreeSitterBash",
+            cSettings: [.headerSearchPath("src")]
+        ),
+        .target(
             name: "FolioHighlight",
             dependencies: [
                 .product(name: "SwiftTreeSitter", package: "swift-tree-sitter"),
@@ -163,7 +176,8 @@ let package = Package(
                 "TreeSitterJSON",
                 "TreeSitterHTML",
                 "TreeSitterCSS",
-                "TreeSitterSwift"
+                "TreeSitterSwift",
+                "TreeSitterBash"
             ],
             resources: [.copy("Queries")]
         ),

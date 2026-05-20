@@ -1,5 +1,5 @@
 import XCTest
-@testable import FolioCodeView
+@testable import FolioReview
 import FolioModel
 
 final class FolioCommentMarkIndexTests: XCTestCase {

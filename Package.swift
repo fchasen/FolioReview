@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "FolioCodeView",
+    name: "FolioReview",
     platforms: [
         .macOS(.v14),
         .iOS(.v17)
     ],
     products: [
-        .library(name: "FolioCodeView", targets: ["FolioCodeView"]),
+        .library(name: "FolioReview", targets: ["FolioReview"]),
         .library(name: "FolioModel", targets: ["FolioModel"]),
         .library(name: "FolioHighlight", targets: ["FolioHighlight"])
     ],
@@ -182,7 +182,7 @@ let package = Package(
             resources: [.copy("Queries")]
         ),
         .target(
-            name: "FolioCodeView",
+            name: "FolioReview",
             dependencies: ["FolioModel", "FolioHighlight"]
         ),
         .testTarget(
@@ -194,8 +194,8 @@ let package = Package(
             dependencies: ["FolioHighlight"]
         ),
         .testTarget(
-            name: "FolioCodeViewTests",
-            dependencies: ["FolioCodeView"]
+            name: "FolioReviewTests",
+            dependencies: ["FolioReview"]
         )
     ]
 )

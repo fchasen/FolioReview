@@ -1,5 +1,5 @@
 import XCTest
-@testable import FolioCodeView
+@testable import FolioReview
 
 final class FolioTextMetricsTests: XCTestCase {
     func testEmptyTextHasOneLine() {

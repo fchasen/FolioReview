@@ -1,6 +1,6 @@
 import XCTest
 import FolioModel
-@testable import FolioCodeView
+@testable import FolioReview
 
 final class FolioRenderArtifactCacheTests: XCTestCase {
     func testCacheReturnsStoredArtifactForSameContent() async {

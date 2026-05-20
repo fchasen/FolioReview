@@ -1,4 +1,4 @@
-# FolioCodeView
+# FolioReview
 
 A SwiftUI diff and code viewer (and editor) with tree-sitter syntax highlighting, split / unified diff layouts, intra-line diffing, and inline comment marks. The read-only paths render in TextKit-backed `Text` rows; the editable path uses a TextKit 2 `NSTextView` / `UITextView` with live, incremental syntax highlighting. No `WKWebView`, no JavaScript bundle.
 
@@ -12,7 +12,7 @@ The package vends three libraries you can import individually:
 |---------|------------------|
 | `FolioModel` | Pure-Swift, no SwiftUI. Diff line / hunk types, unified-diff parser, intra-line diff, split-row builder, line selections, and the folder that collapses long context regions. |
 | `FolioHighlight` | Tree-sitter–based syntax highlighting. Bundled grammars for Swift, JavaScript, TypeScript, Python, Rust, C, C++, JSON, HTML, CSS, and Markdown. `HighlightTheme` carries colors for tokens, gutter, intra-line ranges, and comment marks. |
-| `FolioCodeView` | The `FolioView` SwiftUI component. Pulls in both of the above. |
+| `FolioReview` | The `FolioView` SwiftUI component. Pulls in both of the above. |
 
 ## Requirements
 
@@ -21,15 +21,15 @@ The package vends three libraries you can import individually:
 
 ## Installation
 
-Add FolioCodeView as a Swift Package Manager dependency:
+Add FolioReview as a Swift Package Manager dependency:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/fchasen/FolioCodeView.git", from: "0.1.0")
+    .package(url: "https://github.com/fchasen/FolioReview.git", from: "0.1.0")
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
-        .product(name: "FolioCodeView", package: "FolioCodeView")
+        .product(name: "FolioReview", package: "FolioReview")
     ])
 ]
 ```
@@ -37,8 +37,8 @@ targets: [
 Or import a single sub-library if you don't need the SwiftUI view:
 
 ```swift
-.product(name: "FolioModel", package: "FolioCodeView")
-.product(name: "FolioHighlight", package: "FolioCodeView")
+.product(name: "FolioModel", package: "FolioReview")
+.product(name: "FolioHighlight", package: "FolioReview")
 ```
 
 ## Quick start
@@ -46,7 +46,7 @@ Or import a single sub-library if you don't need the SwiftUI view:
 ### Render a unified diff
 
 ```swift
-import FolioCodeView
+import FolioReview
 import FolioModel
 
 let hunk = UnifiedDiffParser.parse(
@@ -82,7 +82,7 @@ Pass `editable: true` and a `Binding<String>` to turn a `.code` view into a live
 
 ```swift
 import SwiftUI
-import FolioCodeView
+import FolioReview
 
 struct CodeEditor: View {
     @State private var source = """
@@ -209,9 +209,9 @@ The stateless `runs(for:language:)` is still available for one-shot rendering of
 | `FolioHighlighter` | Tree-sitter–based syntax highlighting. Two modes: stateless `runs(for:language:)` for one-shot static renders, and a stateful incremental path (`reset(text:language:)` + `didEdit(replacedRange:replacement:in:)`) for live editing surfaces — each instance retains a parser/tree/query and reports only the byte ranges that changed per edit via `Tree.edit()` + `MutableTree.changedRanges(from:)`. Companion `applyInitialAttributes(...)` / `applyEditAttributes(...)` helpers paint runs onto an `NSTextStorage`. Used by `FolioView`'s editable mode and intended for embedding in custom `NSTextLayoutFragment`s. |
 | `HighlightTheme` | All the colors used by `FolioView` — token classes, gutter, row backgrounds, intra-line emphasis, comment marks. Ships `.light` and `.dark`. |
 
-### `FolioCodeView`
+### `FolioReview`
 
-`FolioView` (`FolioCodeView/FolioView.swift`) is the only SwiftUI entry point. It accepts:
+`FolioView` (`FolioReview/FolioView.swift`) is the only SwiftUI entry point. It accepts:
 
 - `path: String` — used both for the header and to pick a `CodeLanguage` for syntax highlighting.
 - `content: FolioContent` — `.diff(DiffHunk, anchor: AnchorRange?, mode: DiffViewMode)` or `.code(String, startLine: Int)`.
@@ -250,4 +250,4 @@ Two test targets:
 
 ## License
 
-FolioCodeView is released under the Mozilla Public License, v. 2.0. See <https://www.mozilla.org/MPL/2.0/> for the full text.
+FolioReview is released under the Mozilla Public License, v. 2.0. See <https://www.mozilla.org/MPL/2.0/> for the full text.

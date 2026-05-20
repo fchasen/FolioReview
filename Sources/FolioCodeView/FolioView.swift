@@ -24,6 +24,7 @@ public struct FolioView: View {
     public let editable: Bool
     public let text: Binding<String>?
     public let diffTextSelectionLineLimit: Int?
+    public let showsLineNumbers: Bool
 
     @State private var isExpanded: Bool = true
     @State private var contextAbove: Int
@@ -66,7 +67,8 @@ public struct FolioView: View {
         roundsBottomCorners: Bool = true,
         editable: Bool = false,
         text: Binding<String>? = nil,
-        diffTextSelectionLineLimit: Int? = 300
+        diffTextSelectionLineLimit: Int? = 300,
+        showsLineNumbers: Bool = true
     ) {
         self.path = path
         self.content = content
@@ -89,6 +91,7 @@ public struct FolioView: View {
         self.editable = editable
         self.text = text
         self.diffTextSelectionLineLimit = diffTextSelectionLineLimit
+        self.showsLineNumbers = showsLineNumbers
         self._contextAbove = State(initialValue: contextLines)
         self._contextBelow = State(initialValue: contextLinesBelow ?? contextLines)
         self._isExpanded = State(initialValue: !showsHeader || true)
@@ -301,7 +304,7 @@ public struct FolioView: View {
                 language: CodeLanguageRegistry.detect(path: path),
                 startLine: startLine,
                 theme: theme,
-                showsLineNumbers: true
+                showsLineNumbers: showsLineNumbers
             )
         } else {
             #if DEBUG
@@ -779,6 +782,7 @@ public struct FolioView: View {
                     runs: code.runsByLine[index],
                     theme: theme,
                     gutterWidth: artifact.gutterWidth,
+                    showsLineNumber: showsLineNumbers,
                     commentMark: mark,
                     onCommentMarkTap: mark.flatMap { m in
                         onCommentMarkTap.map { handler in { handler(m) } }

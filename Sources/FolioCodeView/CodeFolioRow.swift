@@ -12,6 +12,7 @@ struct CodeFolioRow: View {
     let runs: [FolioHighlighter.Run]
     let theme: HighlightTheme
     let gutterWidth: CGFloat
+    let showsLineNumber: Bool
     let commentMark: FolioCommentMark?
     let onCommentMarkTap: (() -> Void)?
     let onCreateComment: (() -> Void)?
@@ -23,11 +24,13 @@ struct CodeFolioRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            Text(String(lineNumber))
-                .foregroundColor(Color(theme.lineNumber))
-                .frame(width: gutterWidth, alignment: .trailing)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 1)
+            if showsLineNumber {
+                Text(String(lineNumber))
+                    .foregroundColor(Color(theme.lineNumber))
+                    .frame(width: gutterWidth, alignment: .trailing)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+            }
             CommentSlot(
                 mark: commentMark,
                 theme: theme,
@@ -54,9 +57,11 @@ struct CodeFolioRow: View {
         .background {
             ZStack {
                 HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(Color(theme.contextGutter))
-                        .frame(width: gutterWidth + 8)
+                    if showsLineNumber {
+                        Rectangle()
+                            .fill(Color(theme.contextGutter))
+                            .frame(width: gutterWidth + 8)
+                    }
                     Rectangle()
                         .fill(Color(theme.contextRow))
                 }

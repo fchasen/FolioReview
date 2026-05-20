@@ -2,7 +2,7 @@
 
 A SwiftUI diff and code viewer (and editor) with tree-sitter syntax highlighting, split / unified diff layouts, intra-line diffing, and inline comment marks. The read-only paths render in TextKit-backed `Text` rows; the editable path uses a TextKit 2 `NSTextView` / `UITextView` with live, incremental syntax highlighting. No `WKWebView`, no JavaScript bundle.
 
-FolioCodeView was built for Zilla's revision-detail screen but is generic: it takes either a parsed diff hunk or a plain string and produces either a list view of rows with comment hooks, expandable context, and selection callbacks (read-only) or a live syntax-highlighted editor (editable).
+It takes either a parsed diff hunk or a plain string and produces either a list view of rows with comment hooks, expandable context, and selection callbacks (read-only) or a live syntax-highlighted editor (editable).
 
 ## Modules
 
@@ -21,17 +21,24 @@ The package vends three libraries you can import individually:
 
 ## Installation
 
-This package is consumed locally by Zilla via the Xcode project. To use it from another Swift package:
+Add FolioCodeView as a Swift Package Manager dependency:
 
 ```swift
 dependencies: [
-    .package(path: "Packages/FolioCodeView")
+    .package(url: "https://github.com/fchasen/FolioCodeView.git", from: "0.1.0")
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
         .product(name: "FolioCodeView", package: "FolioCodeView")
     ])
 ]
+```
+
+Or import a single sub-library if you don't need the SwiftUI view:
+
+```swift
+.product(name: "FolioModel", package: "FolioCodeView")
+.product(name: "FolioHighlight", package: "FolioCodeView")
 ```
 
 ## Quick start
@@ -224,20 +231,14 @@ The stateless `runs(for:language:)` is still available for one-shot rendering of
 
 `Vendor/tree-sitter-*/` contains pre-generated `parser.c` (and `scanner.c` where applicable) plus the upstream `queries/` directories. They're built as plain C targets and linked into `FolioHighlight`. The `markdown` grammar comes from the SwiftPM dependency [`tree-sitter-grammars/tree-sitter-markdown`](https://github.com/tree-sitter-grammars/tree-sitter-markdown).
 
-To regenerate a vendored grammar after upstream changes, run the matching script in `Tools/` from the repository root:
+Each vendored grammar is MIT-licensed by its upstream author — see [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) for the full list of sources.
 
-```sh
-./Tools/regenerate-tree-sitter-swift.sh
-./Tools/regenerate-tree-sitter-rust.sh
-# etc.
-```
-
-Each script uses `npx tree-sitter-cli` and re-emits `src/parser.c` and headers in place.
+To regenerate a vendored grammar after upstream changes, re-pull from the upstream repository and run `npx tree-sitter-cli generate` inside `Vendor/tree-sitter-<lang>/` so that `src/parser.c` (and `src/scanner.c` where applicable) are re-emitted in place.
 
 ## Testing
 
 ```sh
-swift test --package-path Packages/FolioCodeView
+swift test
 ```
 
 Two test targets:
@@ -245,7 +246,7 @@ Two test targets:
 - `FolioModelTests` — diff parsing, intra-line diffing, split-row building, folding (XCTest).
 - `FolioHighlightTests` — language registry lookup, stateless highlight query execution (XCTest), incremental `reset` + `didEdit` invariants including drift between incremental and full reparse, and `applyInitialAttributes` / `applyEditAttributes` correctness against `NSTextStorage` (Swift Testing).
 
-`FolioView` itself has no XCTest coverage; it's exercised in the Zilla app's `ChangesetView` via `FolioActivityIntegration.swift`.
+`FolioView` itself has no XCTest coverage; it's exercised through the embedding app.
 
 ## License
 

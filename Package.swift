@@ -10,7 +10,17 @@ let package = Package(
     products: [
         .library(name: "FolioReview", targets: ["FolioReview"]),
         .library(name: "FolioModel", targets: ["FolioModel"]),
-        .library(name: "FolioHighlight", targets: ["FolioHighlight"])
+        .library(name: "FolioHighlight", targets: ["FolioHighlight"]),
+        .library(name: "TreeSitterSwift", targets: ["TreeSitterSwift"]),
+        .library(name: "TreeSitterTypeScript", targets: ["TreeSitterTypeScript"]),
+        .library(name: "TreeSitterJavaScript", targets: ["TreeSitterJavaScript"]),
+        .library(name: "TreeSitterPython", targets: ["TreeSitterPython"]),
+        .library(name: "TreeSitterRust", targets: ["TreeSitterRust"]),
+        .library(name: "TreeSitterGo", targets: ["TreeSitterGo"]),
+        .library(name: "TreeSitterC", targets: ["TreeSitterC"]),
+        .library(name: "TreeSitterCPP", targets: ["TreeSitterCPP"]),
+        .library(name: "TreeSitterRuby", targets: ["TreeSitterRuby"]),
+        .library(name: "TreeSitterBash", targets: ["TreeSitterBash"])
     ],
     dependencies: [
         .package(url: "https://github.com/tree-sitter/swift-tree-sitter", from: "0.10.0"),
@@ -69,6 +79,34 @@ let package = Package(
             ],
             sources: ["src/parser.c", "src/scanner.c"],
             publicHeadersPath: "bindings/swift/TreeSitterRust",
+            cSettings: [.headerSearchPath("src")]
+        ),
+        .target(
+            name: "TreeSitterGo",
+            path: "Vendor/tree-sitter-go",
+            exclude: [
+                "grammar.js",
+                "src/grammar.json",
+                "src/node-types.json",
+                "queries",
+                "LICENSE"
+            ],
+            sources: ["src/parser.c"],
+            publicHeadersPath: "bindings/swift/TreeSitterGo",
+            cSettings: [.headerSearchPath("src")]
+        ),
+        .target(
+            name: "TreeSitterRuby",
+            path: "Vendor/tree-sitter-ruby",
+            exclude: [
+                "grammar.js",
+                "src/grammar.json",
+                "src/node-types.json",
+                "queries",
+                "LICENSE"
+            ],
+            sources: ["src/parser.c", "src/scanner.c"],
+            publicHeadersPath: "bindings/swift/TreeSitterRuby",
             cSettings: [.headerSearchPath("src")]
         ),
         .target(

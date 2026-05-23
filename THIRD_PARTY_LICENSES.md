@@ -11,11 +11,13 @@ The `Vendor/tree-sitter-*/` directories contain pre-generated parser sources (`s
 | `Vendor/tree-sitter-bash` | MIT — Copyright (c) 2017 Max Brunsfeld. See `Vendor/tree-sitter-bash/LICENSE`. |
 | `Vendor/tree-sitter-c` | MIT, per upstream `tree-sitter/tree-sitter-c`. |
 | `Vendor/tree-sitter-cpp` | MIT, per upstream `tree-sitter/tree-sitter-cpp`. |
+| `Vendor/tree-sitter-go` | MIT — Copyright (c) 2014 Max Brunsfeld. See `Vendor/tree-sitter-go/LICENSE`. |
 | `Vendor/tree-sitter-css` | MIT, per upstream `tree-sitter/tree-sitter-css`. |
 | `Vendor/tree-sitter-html` | MIT, per upstream `tree-sitter/tree-sitter-html`. |
 | `Vendor/tree-sitter-javascript` | MIT, per upstream `tree-sitter/tree-sitter-javascript`. |
 | `Vendor/tree-sitter-json` | MIT, per upstream `tree-sitter/tree-sitter-json`. |
 | `Vendor/tree-sitter-python` | MIT, per upstream `tree-sitter/tree-sitter-python`. |
+| `Vendor/tree-sitter-ruby` | MIT — Copyright (c) 2016 Rob Rix. See `Vendor/tree-sitter-ruby/LICENSE`. |
 | `Vendor/tree-sitter-rust` | MIT, per upstream `tree-sitter/tree-sitter-rust`. |
 | `Vendor/tree-sitter-swift` | MIT, per upstream. |
 | `Vendor/tree-sitter-typescript` | MIT, per upstream `tree-sitter/tree-sitter-typescript`. |

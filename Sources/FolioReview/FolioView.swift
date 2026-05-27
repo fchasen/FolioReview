@@ -20,6 +20,7 @@ public struct FolioView: View {
     public let threadSlot: ((FolioCommentMark) -> AnyView)?
     public let composerSlot: FolioComposerSlot?
     public let isExpandable: Bool
+    public let roundsTopCorners: Bool
     public let roundsBottomCorners: Bool
     public let editable: Bool
     public let text: Binding<String>?
@@ -64,6 +65,7 @@ public struct FolioView: View {
         composerSlot: FolioComposerSlot? = nil,
         isExpandable: Bool = true,
         contextLinesBelow: Int? = nil,
+        roundsTopCorners: Bool = true,
         roundsBottomCorners: Bool = true,
         editable: Bool = false,
         text: Binding<String>? = nil,
@@ -87,6 +89,7 @@ public struct FolioView: View {
         self.threadSlot = threadSlot
         self.composerSlot = composerSlot
         self.isExpandable = isExpandable
+        self.roundsTopCorners = roundsTopCorners
         self.roundsBottomCorners = roundsBottomCorners
         self.editable = editable
         self.text = text
@@ -130,12 +133,13 @@ public struct FolioView: View {
     }
 
     private var folioShape: UnevenRoundedRectangle {
+        let topRadius = roundsTopCorners ? cornerRadius : 0
         let bottomRadius = roundsBottomCorners ? cornerRadius : 0
         return UnevenRoundedRectangle(
-            topLeadingRadius: cornerRadius,
+            topLeadingRadius: topRadius,
             bottomLeadingRadius: bottomRadius,
             bottomTrailingRadius: bottomRadius,
-            topTrailingRadius: cornerRadius,
+            topTrailingRadius: topRadius,
             style: .continuous
         )
     }

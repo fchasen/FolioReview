@@ -11,15 +11,19 @@ public struct CodeEditorRepresentable: View {
     let language: CodeLanguage
     let theme: HighlightTheme
     let font: PlatformFont
+    let isEditable: Bool
     let fitsContent: Bool
     let minHeight: CGFloat
     let onLayoutManagerReady: (NSTextLayoutManager) -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
 
     public init(
         text: Binding<String>,
         language: CodeLanguage,
         theme: HighlightTheme,
         font: PlatformFont,
+        isEditable: Bool = true,
         fitsContent: Bool = false,
         minHeight: CGFloat = 0,
         onLayoutManagerReady: @escaping (NSTextLayoutManager) -> Void = { _ in }
@@ -28,6 +32,7 @@ public struct CodeEditorRepresentable: View {
         self.language = language
         self.theme = theme
         self.font = font
+        self.isEditable = isEditable
         self.fitsContent = fitsContent
         self.minHeight = minHeight
         self.onLayoutManagerReady = onLayoutManagerReady
@@ -40,6 +45,7 @@ public struct CodeEditorRepresentable: View {
             language: language,
             theme: theme,
             font: font,
+            isEditable: isEditable && isEnabled,
             fitsContent: fitsContent,
             minHeight: minHeight,
             onLayoutManagerReady: onLayoutManagerReady
@@ -50,6 +56,7 @@ public struct CodeEditorRepresentable: View {
             language: language,
             theme: theme,
             font: font,
+            isEditable: isEditable && isEnabled,
             fitsContent: fitsContent,
             minHeight: minHeight,
             onLayoutManagerReady: onLayoutManagerReady
@@ -67,6 +74,7 @@ private struct MacRepresentable: NSViewRepresentable {
     let language: CodeLanguage
     let theme: HighlightTheme
     let font: PlatformFont
+    let isEditable: Bool
     let fitsContent: Bool
     let minHeight: CGFloat
     let onLayoutManagerReady: (NSTextLayoutManager) -> Void
@@ -79,7 +87,7 @@ private struct MacRepresentable: NSViewRepresentable {
         let textView = IntrinsicCodeNSTextView(usingTextLayoutManager: true)
         textView.delegate = context.coordinator
         textView.isRichText = false
-        textView.isEditable = true
+        textView.isEditable = isEditable
         textView.isSelectable = true
         textView.allowsUndo = true
         textView.usesFindBar = false
@@ -137,6 +145,9 @@ private struct MacRepresentable: NSViewRepresentable {
         context.coordinator.language = language
         if textView.font != font {
             textView.font = font
+        }
+        if textView.isEditable != isEditable {
+            textView.isEditable = isEditable
         }
         if textView.fitsContent != fitsContent {
             textView.fitsContent = fitsContent
@@ -214,6 +225,7 @@ private struct IOSRepresentable: UIViewRepresentable {
     let language: CodeLanguage
     let theme: HighlightTheme
     let font: PlatformFont
+    let isEditable: Bool
     let fitsContent: Bool
     let minHeight: CGFloat
     let onLayoutManagerReady: (NSTextLayoutManager) -> Void
@@ -225,6 +237,8 @@ private struct IOSRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView(usingTextLayoutManager: true)
         textView.delegate = context.coordinator
+        textView.isEditable = isEditable
+        textView.isSelectable = true
         textView.font = font
         textView.backgroundColor = .clear
         textView.autocorrectionType = .no
@@ -270,6 +284,9 @@ private struct IOSRepresentable: UIViewRepresentable {
         context.coordinator.language = language
         if textView.font != font {
             textView.font = font
+        }
+        if textView.isEditable != isEditable {
+            textView.isEditable = isEditable
         }
         if textView.isScrollEnabled == fitsContent {
             textView.isScrollEnabled = !fitsContent

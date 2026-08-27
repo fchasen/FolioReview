@@ -106,6 +106,8 @@ struct CodeEditor: View {
 
 **Performance.** Highlighting is incremental. The first paint runs a full tree-sitter parse; each keystroke after that calls `Tree.edit()` → `parser.parse(tree:string:)` → `MutableTree.changedRanges(from:)`, and only the byte ranges that changed are re-highlighted. A retained parser, tree, and query live for the editor's lifetime — no per-keystroke object construction.
 
+**Enabled state.** The editor honors `\.isEnabled`: `.disabled(true)` on the view or on any ancestor turns it read-only in place. The text stays selectable and copyable, highlighting and layout are unchanged, and the text view is never remounted, so selection and scroll position survive the round trip. Re-enabling restores editing without a rebuild.
+
 **Scope.** Editable mode applies only to `.code` content. `.diff` content is always read-only; if you need to capture user edits in a diff context, do that in your inline-comment composer, not here. Passing `editable: true` with a `.diff` content silently behaves as read-only; passing `editable: true` without a `text` binding emits an `assertionFailure` in debug builds and falls back to read-only.
 
 **Platforms.** macOS uses `NSTextView(usingTextLayoutManager: true)`; iOS uses `UITextView(usingTextLayoutManager: true)`. Both run TextKit 2.
@@ -211,7 +213,7 @@ The stateless `runs(for:language:)` is still available for one-shot rendering of
 
 ### `FolioReview`
 
-`FolioView` (`FolioReview/FolioView.swift`) is the only SwiftUI entry point. It accepts:
+`FolioView` (`FolioReview/FolioView.swift`) is the primary SwiftUI entry point. It accepts:
 
 - `path: String` — used both for the header and to pick a `CodeLanguage` for syntax highlighting.
 - `content: FolioContent` — `.diff(DiffHunk, anchor: AnchorRange?, mode: DiffViewMode)` or `.code(String, startLine: Int)`.
@@ -224,6 +226,13 @@ The stateless `runs(for:language:)` is still available for one-shot rendering of
 - `isExpandable`, `roundsBottomCorners`, `cornerRadius`, `showsHeader`, `initialContextLines` — layout knobs.
 - `editable: Bool` — defaults to `false`. When `true` and `content` is `.code(...)`, the view renders a TextKit 2 editor with live syntax highlighting via `FolioHighlighter`. Ignored for `.diff` content.
 - `text: Binding<String>?` — required when `editable` is `true`; the source of truth for the editor's contents. Ignored when `editable` is `false`.
+
+`CodeEditorRepresentable` (`FolioReview/Editor/CodeEditorRepresentable.swift`) is also public, for embedding the TextKit 2 editor on its own — without `FolioView`'s header, gutter, and diff machinery. Alongside `text: Binding<String>`, `language`, `theme`, and `font`, it accepts:
+
+- `isEditable: Bool` — defaults to `true`. The effective editability is `isEditable && isEnabled`, so `false` here pins the view read-only whatever the environment says, and `.disabled(true)` on an ancestor pins it read-only whatever this flag says.
+- `fitsContent: Bool` — defaults to `false`. When `true` the view reports an intrinsic height that tracks the laid-out text instead of scrolling.
+- `minHeight: CGFloat` — defaults to `0`; a floor for that intrinsic height.
+- `onLayoutManagerReady: (NSTextLayoutManager) -> Void` — handed the text view's layout manager on mount, for gutters and other side-by-side chrome.
 
 `DiffViewMode` is `.split` or `.unified`. `ExpandDirection` is `.up` or `.down`, fed back through `onExpandContext` when the user clicks an "expand context" row.
 
@@ -241,10 +250,11 @@ To regenerate a vendored grammar after upstream changes, re-pull from the upstre
 swift test
 ```
 
-Two test targets:
+Three test targets:
 
 - `FolioModelTests` — diff parsing, intra-line diffing, split-row building, folding (XCTest).
 - `FolioHighlightTests` — language registry lookup, stateless highlight query execution (XCTest), incremental `reset` + `didEdit` invariants including drift between incremental and full reparse, and `applyInitialAttributes` / `applyEditAttributes` correctness against `NSTextStorage` (Swift Testing).
+- `FolioReviewTests` — comment-mark indexing, render-artifact caching, text metrics, and the editor's effective editability (`isEditable` × `\.isEnabled`, macOS only, mounted in an `NSHostingView`).
 
 `FolioView` itself has no XCTest coverage; it's exercised through the embedding app.
 

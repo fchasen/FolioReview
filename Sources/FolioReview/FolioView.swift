@@ -30,16 +30,22 @@ public struct FolioView: View {
     @State private var isExpanded: Bool = true
     @State private var contextAbove: Int
     @State private var contextBelow: Int
-    @State private var selectionCells: [FolioSelectableCell] = []
+    @State private var cellRegistry = FolioSelectableCellRegistry()
     @State private var draftSelection: FolioLineSelection?
     @State private var gapStates: [Int: GapRevealState] = [:]
-    @State private var artifact: FolioRenderArtifact
+    @State private var loadedArtifact: LoadedArtifact?
+    @State private var skeleton = FolioSkeletonArtifactBox()
     @State private var commentMarkIndex: FolioCommentMarkIndex
     @State private var capExpanded: Bool = false
 
     private let expandStep: Int = 10
     private let gapExpandStep: Int = 20
     private let progressiveCap: Int = 800
+
+    struct LoadedArtifact {
+        let key: FolioRenderArtifactTaskKey
+        let artifact: FolioRenderArtifact
+    }
 
     struct GapRevealState: Equatable {
         var revealedFromTop: Int = 0
@@ -98,10 +104,6 @@ public struct FolioView: View {
         self._contextAbove = State(initialValue: contextLines)
         self._contextBelow = State(initialValue: contextLinesBelow ?? contextLines)
         self._isExpanded = State(initialValue: !showsHeader || true)
-        self._artifact = State(initialValue: FolioRenderArtifactBuilder.skeleton(
-            content: content,
-            contextLines: contextLines
-        ))
         self._commentMarkIndex = State(initialValue: FolioCommentMarkIndex(commentMarks))
     }
 
@@ -144,6 +146,13 @@ public struct FolioView: View {
         )
     }
 
+    private var artifact: FolioRenderArtifact {
+        if let loadedArtifact, loadedArtifact.key == artifactTaskKey {
+            return loadedArtifact.artifact
+        }
+        return skeleton.artifact(content: content, contextLines: initialContextLines)
+    }
+
     private var artifactTaskKey: FolioRenderArtifactTaskKey {
         FolioRenderArtifactTaskKey(
             content: content,
@@ -180,7 +189,7 @@ public struct FolioView: View {
             artifactTask.cancel()
         }
         guard !Task.isCancelled else { return }
-        artifact = full
+        loadedArtifact = LoadedArtifact(key: key, artifact: full)
     }
 
     private var header: some View {
@@ -218,9 +227,19 @@ public struct FolioView: View {
         selection != nil || onLineSelectionChange != nil
     }
 
-    private var diffTextSelectionEnabled: Bool {
-        guard let limit = diffTextSelectionLineLimit else { return true }
-        return artifact.totalLineCount <= limit
+    private struct RowMetrics {
+        let gutterWidth: CGFloat
+        let allowsTextSelection: Bool
+    }
+
+    private func rowMetrics(for artifact: FolioRenderArtifact) -> RowMetrics {
+        let allowsTextSelection: Bool
+        if let limit = diffTextSelectionLineLimit {
+            allowsTextSelection = artifact.totalLineCount <= limit
+        } else {
+            allowsTextSelection = true
+        }
+        return RowMetrics(gutterWidth: artifact.gutterWidth, allowsTextSelection: allowsTextSelection)
     }
 
     @ViewBuilder
@@ -259,18 +278,20 @@ public struct FolioView: View {
 
     @ViewBuilder
     private var rows: some View {
-        switch (artifact.kind, content) {
+        let resolved = artifact
+        let metrics = rowMetrics(for: resolved)
+        switch (resolved.kind, content) {
         case let (.diff(diff), .diff(_, anchor, mode)):
             if let anchor {
-                anchoredDiffBody(diff: diff, anchor: anchor, mode: mode)
+                anchoredDiffBody(diff: diff, anchor: anchor, mode: mode, metrics: metrics)
             } else {
-                foldedDiffBody(diff: diff, mode: mode)
+                foldedDiffBody(diff: diff, mode: mode, metrics: metrics)
             }
         case let (.code(code), .code(_, startLine)):
             if editable {
                 editableCodeBody(startLine: startLine)
             } else {
-                codeBody(code: code)
+                codeBody(code: code, metrics: metrics)
             }
         default:
             EmptyView()
@@ -283,16 +304,12 @@ public struct FolioView: View {
             #if os(macOS)
             rows
                 .coordinateSpace(name: FolioSelectionMath.coordinateSpaceName)
+                .environment(\.folioSelectableCellRegistry, cellRegistry)
                 .gesture(selectionDragGesture)
-                .onPreferenceChange(FolioSelectableCellsPreference.self) { cells in
-                    updateSelectionCells(cells)
-                }
             #else
             rows
                 .coordinateSpace(name: FolioSelectionMath.coordinateSpaceName)
-                .onPreferenceChange(FolioSelectableCellsPreference.self) { cells in
-                    updateSelectionCells(cells)
-                }
+                .environment(\.folioSelectableCellRegistry, cellRegistry)
             #endif
         } else {
             rows
@@ -325,7 +342,8 @@ public struct FolioView: View {
     private func anchoredDiffBody(
         diff: FolioRenderArtifact.Diff,
         anchor: AnchorRange,
-        mode: DiffViewMode
+        mode: DiffViewMode,
+        metrics: RowMetrics
     ) -> some View {
         let bounds = SnippetWindow.bounds(
             hunk: diff.hunk,
@@ -333,7 +351,7 @@ public struct FolioView: View {
             contextAbove: contextAbove,
             contextBelow: contextBelow
         )
-        let leadingGutter = artifact.gutterWidth + 8
+        let leadingGutter = metrics.gutterWidth + 8
         let trailingGutter: CGFloat? = mode == .split ? leadingGutter : nil
 
         LazyVStack(alignment: .leading, spacing: 0) {
@@ -354,7 +372,8 @@ public struct FolioView: View {
                 renderRowRange(
                     diff: diff,
                     range: bounds.startIndex...bounds.endIndex,
-                    mode: mode
+                    mode: mode,
+                    metrics: metrics
                 )
             }
             if isExpandable, bounds.linesBelow > 0 || onExpandContext != nil {
@@ -401,9 +420,10 @@ public struct FolioView: View {
     @ViewBuilder
     private func foldedDiffBody(
         diff: FolioRenderArtifact.Diff,
-        mode: DiffViewMode
+        mode: DiffViewMode,
+        metrics: RowMetrics
     ) -> some View {
-        let leadingGutter = artifact.gutterWidth + 8
+        let leadingGutter = metrics.gutterWidth + 8
         let trailingGutter: CGFloat? = mode == .split ? leadingGutter : nil
         let sections = diff.foldedSections
         let positions = computeGapPositions(sections)
@@ -421,7 +441,8 @@ public struct FolioView: View {
                             renderRowRange(
                                 diff: diff,
                                 range: start...cappedEnd,
-                                mode: mode
+                                mode: mode,
+                                metrics: metrics
                             )
                         }
                         if let capInfo, capInfo.cutSectionIdx == idx {
@@ -440,7 +461,8 @@ public struct FolioView: View {
                             diff: diff,
                             leadingGutter: leadingGutter,
                             trailingGutter: trailingGutter,
-                            mode: mode
+                            mode: mode,
+                            metrics: metrics
                         )
                     }
                 }
@@ -519,7 +541,8 @@ public struct FolioView: View {
         diff: FolioRenderArtifact.Diff,
         leadingGutter: CGFloat,
         trailingGutter: CGFloat?,
-        mode: DiffViewMode
+        mode: DiffViewMode,
+        metrics: RowMetrics
     ) -> some View {
         let state = gapStates[start] ?? GapRevealState()
         let totalSize = end - start + 1
@@ -531,14 +554,16 @@ public struct FolioView: View {
                 renderRowRange(
                     diff: diff,
                     range: start...end,
-                    mode: mode
+                    mode: mode,
+                    metrics: metrics
                 )
             } else {
                 if state.revealedFromTop > 0 {
                     renderRowRange(
                         diff: diff,
                         range: start...(start + state.revealedFromTop - 1),
-                        mode: mode
+                        mode: mode,
+                        metrics: metrics
                     )
                 }
                 ExpandContextRow(
@@ -561,7 +586,8 @@ public struct FolioView: View {
                     renderRowRange(
                         diff: diff,
                         range: (end - state.revealedFromBottom + 1)...end,
-                        mode: mode
+                        mode: mode,
+                        metrics: metrics
                     )
                 }
             }
@@ -584,7 +610,8 @@ public struct FolioView: View {
     private func renderRowRange(
         diff: FolioRenderArtifact.Diff,
         range: ClosedRange<Int>,
-        mode: DiffViewMode
+        mode: DiffViewMode,
+        metrics: RowMetrics
     ) -> some View {
         let hunk = diff.hunk
         if !range.isEmpty,
@@ -600,7 +627,7 @@ public struct FolioView: View {
                         lineRange: diff.lineRanges[absIdx],
                         runs: lineRuns(in: diff, index: absIdx),
                         theme: theme,
-                        gutterWidth: artifact.gutterWidth,
+                        gutterWidth: metrics.gutterWidth,
                         commentMark: lookup.mark,
                         onCommentMarkTap: lookup.mark.flatMap { m in
                             onCommentMarkTap.map { handler in { handler(m) } }
@@ -610,7 +637,7 @@ public struct FolioView: View {
                         coordinateSpace: FolioSelectionMath.coordinateSpaceName,
                         reportsSelection: selectionReportingEnabled,
                         intralineRanges: diff.unifiedIntralineByHunkIdx[absIdx] ?? [],
-                        allowsTextSelection: diffTextSelectionEnabled
+                        allowsTextSelection: metrics.allowsTextSelection
                     )
                     unifiedSlots(for: line)
                 }
@@ -645,7 +672,7 @@ public struct FolioView: View {
                         leftRuns: lineRuns(in: diff, index: leftAbs),
                         rightRuns: lineRuns(in: diff, index: rightAbs),
                         theme: theme,
-                        gutterWidth: artifact.gutterWidth,
+                        gutterWidth: metrics.gutterWidth,
                         leftMark: leftMark,
                         rightMark: rightMark,
                         onLeftMarkTap: leftMark.flatMap { m in
@@ -660,7 +687,7 @@ public struct FolioView: View {
                         isRightInSelection: isLineSelected(rightLineNum, side: .newFile),
                         coordinateSpace: FolioSelectionMath.coordinateSpaceName,
                         reportsSelection: selectionReportingEnabled,
-                        allowsTextSelection: diffTextSelectionEnabled
+                        allowsTextSelection: metrics.allowsTextSelection
                     )
                     splitSlots(leftLine: leftLine, rightLine: rightLine)
                 }
@@ -672,7 +699,7 @@ public struct FolioView: View {
         in range: ClosedRange<Int>,
         diff: FolioRenderArtifact.Diff
     ) -> [FolioRenderArtifact.SplitRowDescriptor] {
-        diff.splitRows.compactMap { $0.clipped(to: range) }
+        diff.splitRows(clippedTo: range)
     }
 
     private func lineRuns(
@@ -691,18 +718,18 @@ public struct FolioView: View {
     private func unifiedSlots(for line: DiffLine) -> some View {
         switch line.kind {
         case .addition:
-            if let n = line.newNumber {
+            if let n = line.newNumber, hasSlot(side: .newFile, line: n) {
                 slotsAt(side: .newFile, line: n)
             }
         case .deletion:
-            if let o = line.oldNumber {
+            if let o = line.oldNumber, hasSlot(side: .oldFile, line: o) {
                 slotsAt(side: .oldFile, line: o)
             }
         case .context:
-            if let n = line.newNumber {
+            if let n = line.newNumber, hasSlot(side: .newFile, line: n) {
                 slotsAt(side: .newFile, line: n)
             }
-            if let o = line.oldNumber {
+            if let o = line.oldNumber, hasSlot(side: .oldFile, line: o) {
                 slotsAt(side: .oldFile, line: o)
             }
         case .noNewline:
@@ -774,7 +801,7 @@ public struct FolioView: View {
     }
 
     @ViewBuilder
-    private func codeBody(code: FolioRenderArtifact.Code) -> some View {
+    private func codeBody(code: FolioRenderArtifact.Code, metrics: RowMetrics) -> some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(code.lineRanges.indices, id: \.self) { index in
                 let lineNum = code.startLine + index
@@ -785,7 +812,7 @@ public struct FolioView: View {
                     lineRange: code.lineRanges[index],
                     runs: code.runsByLine[index],
                     theme: theme,
-                    gutterWidth: artifact.gutterWidth,
+                    gutterWidth: metrics.gutterWidth,
                     showsLineNumber: showsLineNumbers,
                     commentMark: mark,
                     onCommentMarkTap: mark.flatMap { m in
@@ -854,7 +881,7 @@ public struct FolioView: View {
                 let updated = FolioSelectionMath.selection(
                     from: value.startLocation,
                     to: value.location,
-                    cells: selectionCells
+                    cells: cellRegistry.cells
                 )
                 draftSelection = updated
             }
@@ -862,18 +889,12 @@ public struct FolioView: View {
                 let final = FolioSelectionMath.selection(
                     from: value.startLocation,
                     to: value.location,
-                    cells: selectionCells
+                    cells: cellRegistry.cells
                 )
                 draftSelection = final
                 selection?.wrappedValue = final
                 onLineSelectionChange?(final)
             }
-    }
-
-    private func updateSelectionCells(_ cells: [FolioSelectableCell]) {
-        if selectionCells != cells {
-            selectionCells = cells
-        }
     }
 
     private func isLineSelected(_ line: Int?, side: AnchorRange.Side) -> Bool {

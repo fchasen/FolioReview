@@ -23,12 +23,67 @@ struct FolioRenderArtifact: Sendable, Equatable {
         let splitRows: [SplitRowDescriptor]
         let foldedSections: [FoldedDiff.Section]
         let foldedContextLines: Int
+        let splitRowMaxIndexPrefix: [Int]
+
+        init(
+            hunk: DiffHunk,
+            lineRanges: [NSRange],
+            runsByLine: [[FolioHighlighter.Run]],
+            intralineDiffByText: [FolioTextPair: IntralineDiff.Result],
+            unifiedIntralineByHunkIdx: [Int: [NSRange]],
+            splitRows: [SplitRowDescriptor],
+            foldedSections: [FoldedDiff.Section],
+            foldedContextLines: Int
+        ) {
+            self.hunk = hunk
+            self.lineRanges = lineRanges
+            self.runsByLine = runsByLine
+            self.intralineDiffByText = intralineDiffByText
+            self.unifiedIntralineByHunkIdx = unifiedIntralineByHunkIdx
+            self.splitRows = splitRows
+            self.foldedSections = foldedSections
+            self.foldedContextLines = foldedContextLines
+            var runningMax = Int.min
+            self.splitRowMaxIndexPrefix = splitRows.map { row in
+                runningMax = max(runningMax, row.maxIndex)
+                return runningMax
+            }
+        }
+
+        func splitRows(clippedTo range: ClosedRange<Int>) -> [SplitRowDescriptor] {
+            let start = firstSplitRow { splitRowMaxIndexPrefix[$0] >= range.lowerBound }
+            let end = firstSplitRow { splitRows[$0].minIndex > range.upperBound }
+            guard start < end else { return [] }
+            return splitRows[start..<end].compactMap { $0.clipped(to: range) }
+        }
+
+        private func firstSplitRow(where predicate: (Int) -> Bool) -> Int {
+            var low = 0
+            var high = splitRows.count
+            while low < high {
+                let mid = (low + high) / 2
+                if predicate(mid) {
+                    high = mid
+                } else {
+                    low = mid + 1
+                }
+            }
+            return low
+        }
     }
 
     struct SplitRowDescriptor: Sendable, Equatable {
         let leftIndex: Int?
         let rightIndex: Int?
         let intralineDiff: IntralineDiff.Result?
+
+        var minIndex: Int {
+            min(leftIndex ?? .max, rightIndex ?? .max)
+        }
+
+        var maxIndex: Int {
+            max(leftIndex ?? .min, rightIndex ?? .min)
+        }
 
         func clipped(to range: ClosedRange<Int>) -> SplitRowDescriptor? {
             let clippedLeft = leftIndex.flatMap { range.contains($0) ? $0 : nil }

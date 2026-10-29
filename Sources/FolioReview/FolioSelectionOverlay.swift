@@ -8,14 +8,76 @@ struct FolioSelectableCell: Equatable, Hashable {
     let frame: CGRect
 }
 
-struct FolioSelectableCellsPreference: PreferenceKey {
-    static var defaultValue: [FolioSelectableCell] = []
-    static func reduce(value: inout [FolioSelectableCell], nextValue: () -> [FolioSelectableCell]) {
-        value.append(contentsOf: nextValue())
+final class FolioSelectableCellRegistry {
+    private var cellsByID: [String: FolioSelectableCell] = [:]
+
+    var cells: [FolioSelectableCell] {
+        Array(cellsByID.values)
+    }
+
+    func update(_ cell: FolioSelectableCell) {
+        cellsByID[cell.id] = cell
+    }
+
+    func remove(id: String) {
+        cellsByID[id] = nil
+    }
+}
+
+private struct FolioSelectableCellRegistryKey: EnvironmentKey {
+    static let defaultValue: FolioSelectableCellRegistry? = nil
+}
+
+extension EnvironmentValues {
+    var folioSelectableCellRegistry: FolioSelectableCellRegistry? {
+        get { self[FolioSelectableCellRegistryKey.self] }
+        set { self[FolioSelectableCellRegistryKey.self] = newValue }
+    }
+}
+
+private struct FolioCellReporter: ViewModifier {
+    let id: String
+    let line: Int
+    let side: AnchorRange.Side
+    let space: String
+
+    @Environment(\.folioSelectableCellRegistry) private var registry
+
+    func body(content: Content) -> some View {
+        if let registry {
+            if #available(macOS 15.0, iOS 18.0, *) {
+                content
+                    .onGeometryChange(for: CGRect.self) { proxy in
+                        proxy.frame(in: .named(space))
+                    } action: { frame in
+                        registry.update(cell(frame: frame))
+                    }
+                    .onDisappear { registry.remove(id: id) }
+            } else {
+                content
+                    .background(
+                        GeometryReader { proxy in
+                            let frame = proxy.frame(in: .named(space))
+                            Color.clear
+                                .onChange(of: frame, initial: true) { _, newFrame in
+                                    registry.update(cell(frame: newFrame))
+                                }
+                        }
+                    )
+                    .onDisappear { registry.remove(id: id) }
+            }
+        } else {
+            content
+        }
+    }
+
+    private func cell(frame: CGRect) -> FolioSelectableCell {
+        FolioSelectableCell(id: id, line: line, side: side, frame: frame)
     }
 }
 
 extension View {
+    @ViewBuilder
     func reportingFolioCell(
         id: String,
         line: Int?,
@@ -23,21 +85,10 @@ extension View {
         in space: String,
         enabled: Bool = true
     ) -> some View {
-        Group {
-            if enabled {
-                self.background(
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: FolioSelectableCellsPreference.self,
-                            value: line.map { ln in
-                                [FolioSelectableCell(id: id, line: ln, side: side, frame: proxy.frame(in: .named(space)))]
-                            } ?? []
-                        )
-                    }
-                )
-            } else {
-                self
-            }
+        if enabled, let line {
+            modifier(FolioCellReporter(id: id, line: line, side: side, space: space))
+        } else {
+            self
         }
     }
 }

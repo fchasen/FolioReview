@@ -6,4 +6,13 @@ enum FolioTextMetrics {
         }
         return count
     }
+
+    static func leadingIndentCount(in text: String) -> Int {
+        var count = 0
+        for character in text {
+            guard character == " " || character == "\t" else { return count }
+            count += 1
+        }
+        return count
+    }
 }

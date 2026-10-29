@@ -11,8 +11,20 @@ struct FolioHighlightedText: View, Equatable {
     let themeSignature: Int
 
     var body: some View {
-        Text(highlightedText)
-            .foregroundColor(Color(defaultColor))
+        let attributed = highlightedText
+        let indentCount = FolioTextMetrics.leadingIndentCount(in: text)
+        Group {
+            if indentCount > 0, indentCount < attributed.characters.count {
+                let split = attributed.characters.index(attributed.startIndex, offsetBy: indentCount)
+                FolioHangingIndentLayout {
+                    Text(AttributedString(attributed[..<split]))
+                    Text(AttributedString(attributed[split...]))
+                }
+            } else {
+                Text(attributed)
+            }
+        }
+        .foregroundColor(Color(defaultColor))
     }
 
     static func == (lhs: FolioHighlightedText, rhs: FolioHighlightedText) -> Bool {
